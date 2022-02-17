@@ -1,0 +1,330 @@
+<head>
+	<title>Mario Game</title><title>Projeto Jogo Mario Debora S Simao
+	
+	</title>
+	<meta charset="UTF-8">
+</head>
+
+<body  bgcolor="#87CEFA"> >
+	
+<br>
+<canvas id="myCanvas" width="1000" height="600" style="border:1px solid #1abd2f;"></canvas>
+<script type="text/javascript">
+
+
+
+
+
+
+class Sprite
+{
+	constructor(model, sprite_type , x, y, w, h, image_url, update_method)
+	{
+		this.model = model;
+		this.sprite_type = sprite_type;
+		this.x = x;
+		this.y = y;
+		this.w = w;
+		this.h = h;
+		this.image = new Image();
+		this.image.src = image_url;
+		this.update = update_method;
+
+
+		if(sprite_type == "Mario")
+		{
+			this.vert_vel = 0.0;
+			this.groundFrames = 0;
+			this.prev_x = 0;
+			this.prev_y = 0;
+		}
+
+		if(sprite_type == "Coin_Block")
+		{
+			this.coins_remain = 5;
+		}
+
+		if(sprite_type == "Coin")
+		{
+			this.vert_vel = -Math.floor((Math.random() * 60) + 1);
+			this.hori_vel = Math.floor((Math.random() * 30) + 1);
+		}
+	}
+     
+	mario_update()
+	{
+		this.model.scrollPos = this.x - 100;
+		this.vert_vel += 3;
+		this.y += this.vert_vel;
+
+		if(this.y >= 400)
+		{
+			this.y = 400;
+			this.vert_vel = 0;
+		}
+
+		if(this.vert_vel == 0)
+		{
+			this.groundFrames = 0;
+		}
+
+		else
+		{
+			this.groundFrames++;
+		}
+	}
+
+	Brick_update()
+	{
+		for(let i = 0; i < this.model.sprites.length; i++)
+		{
+			let s = this.model.sprites[i];
+			if(s.sprite_type == "Mario")
+			{
+				if(this.doesCollide(s))
+					this.push_out(s);
+			}
+		}
+	}
+
+	Coin_Block_update()
+	{
+		for(let i = 0; i < this.model.sprites.length; i++)
+		{
+			let s = this.model.sprites[i];
+			if(s.sprite_type == "Mario")
+			{
+				if(this.doesCollide(s))
+					this.push_out(s);
+			}
+		}
+	}
+
+	coin_update()
+	{
+		this.vert_vel += 4;
+		this.y += this.vert_vel;
+		this.x += this.hori_vel;
+
+		// if(this.y >= 400)
+		// {
+		// 	this.model.sprites.pop(this);
+		// 	arr.splice("Coin", 1);
+		// }
+	}
+
+	remember_pos()
+	{
+		this.prev_x = this.x;
+		this.prev_y = this.y;
+	}
+
+	doesCollide(that)
+	{
+		if (that.x + that.w <= this.x)
+			return false;
+		if (that.x >= this.x + this.w)
+			return false;
+		if (that.y + that.h <= this.y)
+			return false;
+		if (that.y >= this.y + this.h)
+			return false;
+		return true;
+	}
+
+	push_out(that)
+	{
+		if(that.x + that.w >= this.x && that.prev_x + that.w <= this.x) //left
+		{
+			that.x = this.x - that.w;
+		}
+
+		if( that.x <= this.x + this.w && that.prev_x >= this.x + this.w) //right
+		{
+			that.x = this.x + this.w;
+		}
+
+		if(that.y + that.h >= this.y && that.prev_y + that.h <= this.y) //above
+		{
+			that.vert_vel = 0;
+			that.y = this.y - that.h;
+			that.groundFrames = 0;
+		}
+
+		if(that.y <= this.y + this.h && that.prev_y >= this.y + this.h) //bottom.
+		{
+			if(this.sprite_type == "Brick")
+			{
+				that.y = this.y + this.h;
+				that.vert_vel = 1;
+			}
+
+			if(this.sprite_type == "Coin_Block")
+			{
+				that.y = this.y + this.h -26;
+				that.vert_vel = 1;
+				this.coins_remain -= 1;
+				if(this.coins_remain >= 0)
+					this.model.sprites.push(new Sprite(this, "Coin", this.x, this.y, 60, 60, "coin.png", Sprite.prototype.coin_update));	
+			}
+		}		
+	}
+	
+}
+
+
+class Model
+{
+	constructor()
+	{
+		this.scrollPos = 0;
+		this.sprites = [];
+		this.mario = new Sprite(this, "Mario", 0, 0, 60, 95, "mario1.png", Sprite.prototype.mario_update);
+		this.sprites.push(this.mario);
+		this.sprites.push(new Sprite(this, "Brick", 700, 350, 100, 100, "brick.png", Sprite.prototype.Brick_update));
+		this.sprites.push(new Sprite(this, "Brick", 1000, 250, 100, 100, "brick.png", Sprite.prototype.Brick_update));
+		this.sprites.push(new Sprite(this, "Coin_Block", 300, 200, 100, 100, "block1.png", Sprite.prototype.Coin_Block_update));
+	}
+
+	update()
+	{
+		for(let i = 0; i < this.sprites.length; i++)
+		{
+			this.sprites[i].update();
+
+			if(this.sprites[i].sprite_type == "Coin")
+			{
+				if(this.sprites[i].y > 400)
+				{
+					this.sprites.splice(i, 1);
+					//this.model.sprites.pop();
+					i--;
+				}
+			}
+		}
+	}
+}
+
+
+class Controller
+{
+	constructor(model, view)
+	{
+		this.model = model;
+		this.view = view;
+		this.key_right = false;
+		this.key_left = false;
+		this.key_space = false;
+		let self = this;
+		document.addEventListener('keydown', function(event) { self.keyDown(event); }, false);
+		document.addEventListener('keyup', function(event) { self.keyUp(event); }, false);
+	}
+
+	keyDown(event)
+	{
+		if(event.keyCode == 39) this.key_right = true;
+		else if(event.keyCode == 37) this.key_left = true;
+		else if(event.keyCode == 32) this.key_space = true;
+	}
+
+	keyUp(event)
+	{
+		if(event.keyCode == 39) this.key_right = false;
+		else if(event.keyCode == 37) this.key_left = false;
+		else if(event.keyCode == 32) this.key_space = false;
+	}
+
+	update()
+	{
+		this.model.mario.remember_pos();
+
+		if(this.key_right)
+		{
+			this.model.mario.x += 15;
+		}
+		if(this.key_left) 
+		{
+			this.model.mario.x -= 15;
+		}
+		if(this.key_space)
+		{
+			if(this.model.mario.groundFrames < 4)
+				this.model.mario.vert_vel -= 10.8;		
+		}
+	}
+}
+
+
+class View
+{
+	constructor(model)
+	{
+		this.model = model;
+		this.canvas = document.getElementById("myCanvas");
+		this.background = new Image();
+		this.background.src = "background.png";
+	}
+
+	update()
+	{
+		let ctx = this.canvas.getContext("2d");
+		ctx.clearRect(0, 0, 1000, 600);
+		ctx.drawImage(this.background , 0, 0, myCanvas.width, myCanvas.height);
+		ctx.fillStyle = "#00ff00";
+		ctx.fillRect(0, 495, myCanvas.width, myCanvas.height);
+
+		for(let i = 0; i < this.model.sprites.length; i++)
+		{
+			let sprite = this.model.sprites[i];
+
+			if (sprite.sprite_type == "Mario")
+			{
+				if ((Math.abs(sprite.x / 15)) % 5 == 0)
+					sprite.image.src = "mario1.png";
+				else if ((Math.abs(sprite.x / 15)) % 5 <= 1)
+					sprite.image.src = "mario2.png";
+				else if ((Math.abs(sprite.x / 15)) % 5 <= 2)
+					sprite.image.src = "mario3.png";
+				else if ((Math.abs(sprite.x / 15)) % 5 <= 3)
+					sprite.image.src = "mario4.png";
+				else if ((Math.abs(sprite.x / 15)) % 5 <= 4)
+					sprite.image.src = "mario5.png";
+			}
+
+			if(sprite.sprite_type == "Coin_Block")
+			{
+				if(sprite.coins_remain <= 0)
+					sprite.image.src = "block2.png";
+				else
+					sprite.image.src = "block1.png";
+			}
+			
+			ctx.drawImage(sprite.image, sprite.x - this.model.scrollPos, sprite.y, sprite.w, sprite.h);
+		}
+	}
+}
+
+
+class Game
+{
+	constructor()
+	{
+		this.model = new Model();
+		this.view = new View(this.model);
+		this.controller = new Controller(this.model, this.view);
+	}
+
+	onTimer()
+	{
+		this.controller.update();
+		this.model.update();
+		this.view.update();
+	}
+}
+
+let game = new Game();
+let timer = setInterval(function() { game.onTimer(); }, 40);
+
+</script>
+
+</body>
